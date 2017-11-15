@@ -3,7 +3,7 @@ require('./config/config')
 const express = require('express')
 const bodyParser = require('body-parser')
 const {ObjectID} = require('mongodb')
-const _ = require('lodash');
+const _ = require('lodash')
 
 const {mongoose} = require('./db/mongoose')
 const {Todo} = require('./models/todo')
@@ -14,6 +14,7 @@ let app = express();
 const port = process.env.PORT;
 
 app.use(bodyParser.json());
+app.disable('x-powered-by');
 
 app.post('/todos', (req, res) => {
   let todo = new Todo({
@@ -94,6 +95,21 @@ app.patch('/todos/:id', (req, res) => {
     res.send({todo});
   }).catch((err) => {
     res.status(400).send();
+  });
+});
+
+app.post('/users', (req, res) => {
+  const body = _.pick(req.body, ['email', 'password']);
+  const user = new User(body);
+
+  user.save().then(() => {
+    return user.generateAuthToken();
+  }).then((token) => {
+    // set a custom header - pushing the token in there for when
+    // requests to the api are called
+    res.header('x-auth', token).send(user);
+  }).catch((err) => {
+    res.status(400).send(err);
   });
 });
 
