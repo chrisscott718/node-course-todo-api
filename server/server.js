@@ -8,6 +8,7 @@ const _ = require('lodash')
 const {mongoose} = require('./db/mongoose')
 const {Todo} = require('./models/todo')
 const {User} = require('./models/user')
+const {authenticate} = require('./middleware/authenticate')
 
 
 let app = express();
@@ -107,11 +108,21 @@ app.post('/users', (req, res) => {
   }).then((token) => {
     // set a custom header - pushing the token in there for when
     // requests to the api are called
-    res.header('x-auth', token).send(user);
+    res.header('x-auth', token).send(user); // send back token in header along with id and email
   }).catch((err) => {
     res.status(400).send(err);
   });
 });
+
+// this route will require authentication
+// which means you'll need to provide a valid x-auth token
+// find associated user and send that user back
+// we'll use this example to CREATE middleware to turn the
+// rest of the routes into private routes
+app.get('/users/me', authenticate, (req, res) => {
+  res.send(req.user);
+});
+
 
 app.listen(port, () => {
   console.log(`Server up and running on port ${port}`);

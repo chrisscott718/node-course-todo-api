@@ -34,7 +34,7 @@ let UserSchema = new mongoose.Schema({
   }]
 });
 
-// overriding a method on the user model
+// overriding an instance method on the user model
 UserSchema.methods.toJSON = function() {
   let user = this;
   // responsible for taking mongoose model and turning it
@@ -44,16 +44,34 @@ UserSchema.methods.toJSON = function() {
   return _.pick(userObject, ['_id', 'email']);
 };
 
-// custom method to create a token
+// custom instance method to create a token
 UserSchema.methods.generateAuthToken = function() {
   let user = this;
-  let access = 'auth';
+  let access = 'auth'; // why do we need this? To specify what access we are giving the user?
   let token = jwt.sign({_id: user._id.toHexString(), access}, 'abc123').toString();
 
   user.tokens.push({access, token});
 
   return user.save().then(() => {
     return token;
+  });
+};
+
+// model methods uses statics
+UserSchema.statics.findByToken = function(token) {
+  let User = this;
+  let decoded;
+
+  try {
+    decoded = jwt.verify(token, 'abc123');
+  } catch(e) {
+    return Promise.reject();
+    // this will reject the call to findByToken and cause the catch block to run
+  }
+  return User.findOne({
+    '_id': decoded._id,
+    'tokens.token': token,
+    'tokens.access': 'auth'
   });
 };
 
