@@ -205,9 +205,7 @@ describe('POST /users', () => {
           expect(user).toBeDefined();
           expect(user.password).not.toBe(password);
           done();
-        }).catch((err) => {
-          done(err);
-        });
+        }).catch((err) => done(err));
       });
   });
   it('should return validation errors if request invalid', (done) => {
@@ -227,5 +225,52 @@ describe('POST /users', () => {
       .send({email, password})
       .expect(400)
       .end(done);
+  });
+});
+
+describe('POST /users/login', () => {
+  it('should login user and return auth token', (done) => {
+    const email = users[1].email,
+          password = users[1].password;
+    request(app)
+      .post('/users/login')
+      .send({ email, password })
+      .expect(200)
+      .expect((res) => {
+        expect(res.headers['x-auth']).toBeDefined();
+        expect(res.body.email).toBe(email);
+        expect(res.body._id).toBe(users[1]._id.toHexString());
+      })
+      .end((err, res) => {
+        if(err) {
+          return done(err);
+        }
+
+        User.findById(users[1]._id).then((user) => {
+          expect(user.tokens[0].access).toBe('auth');
+          expect(user.tokens[0].token).toBe(res.headers['x-auth']);
+          done();
+        }).catch((err) => done(err));
+      });
+  });
+  it('should reject invalid login', (done) => {
+    const email = users[1].email,
+          password = 'dumbpassword';
+    request(app)
+      .post('/users/login')
+      .send({email, password})
+      .expect(400)
+      .expect((res) => {
+        expect(res.headers['x-auth']).toBeUndefined();
+      })
+      .end((err, res) => {
+        if(err) {
+          return done(err);
+        }
+        User.findById(users[1]._id).then((user) => {
+          expect(user.tokens.length).toBe(0);
+          done();
+        }).catch((err) => done(err));
+      });
   });
 });
